@@ -5,7 +5,8 @@ const VIEW_WIDTH = 500;
 const VIEW_HEIGHT = 500;
 const VELOCITY_MULTIPLIER = 1;
 
-let ctx, birds, goalPosition;
+let ctx, birds, goalPosition, inertiaCoef, cognitiveCoef, socialCoef;
+let inertiaInput, cognitiveInput, socialInput;
 
 // type Bird = {
 //     position:[number, number]
@@ -21,11 +22,23 @@ function startup() {
 
   const resetButton = document.getElementById("reset-button");
   resetButton.onclick = startSimulation;
+  inertiaInput = document.getElementById("inertia");
+  cognitiveInput = document.getElementById("cognitive");
+  socialInput = document.getElementById("social");
+
+  // defaults
+  inertiaInput.value = 0.9;
+  cognitiveInput.value = 0.9;
+  socialInput.value = 0.1;
 
   startSimulation();
 }
 
 function startSimulation() {
+  inertiaCoef = inertiaInput.value;
+  cognitiveCoef = cognitiveInput.value;
+  socialCoef = socialInput.value;
+
   birds = [];
   for (let i = 0; i < NO_OF_BIRDS; i++) {
     birds.push(createNewBird());
@@ -94,20 +107,16 @@ function getNextBirdPosition(bird) {
 function getNextBirdVelocity(bird) {
   // V^i(t+1) = w V^i(t) + c_1r_1(pbest^i – X^i(t)) + c_2r_2(gbest – X^i(t))
 
-  const r1 = Math.random();
-  const r2 = Math.random();
-  const w = 0.9; // inertia weigh const
-  const c1 = 0.9; // cognitive coeff
-  const c2 = 0.1; // social coeff
   const pbest = bird.pBest;
   const gbest = getGBest();
 
-  const cognitiveCoef = c1 * r1;
-  const socialCoef = c2 * r2;
+  const inertia = inertiaCoef;
+  const cognitive = cognitiveCoef * Math.random();
+  const social = socialCoef * Math.random();
 
-  const inertiaPart = vFactor(bird.velocity, w);
-  const cognitivePart = vFactor(vSubtract(pbest, bird.position), cognitiveCoef);
-  const socialPart = vFactor(vSubtract(gbest, bird.position), socialCoef);
+  const inertiaPart = vFactor(bird.velocity, inertia);
+  const cognitivePart = vFactor(vSubtract(pbest, bird.position), cognitive);
+  const socialPart = vFactor(vSubtract(gbest, bird.position), social);
 
   const nextVelocity = vAdd(vAdd(inertiaPart, cognitivePart), socialPart);
 

@@ -12,7 +12,16 @@
 
   <body>
     <canvas id="canvas"></canvas>
-    <button id="reset-button">Reset</button>
+    <div id="controls">
+      <div>inertia:</div>
+      <input type="text" id="inertia" />
+      <div>cognitive:</div>
+      <input type="text" id="cognitive" />
+      <div>social:</div>
+      <input type="text" id="social" />
+
+      <button id="reset-button">Restart</button>
+    </div>
     <script>
       window.onload = () => startup();
     </script>

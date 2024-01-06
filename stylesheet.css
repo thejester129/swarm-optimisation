@@ -1,3 +1,9 @@
 #canvas{
     border: 3px solid black;
 }
+
+#controls{
+    display: flex;
+    flex-direction: column;
+    width: 100px;
+}
