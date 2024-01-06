@@ -1,6 +1,6 @@
 const BIRD_RADIUS = 10;
 const NO_OF_BIRDS = 10;
-const TIC_SPEED_MS = 100;
+const TIC_SPEED_MS = 200;
 const VIEW_WIDTH = 500;
 const VIEW_HEIGHT = 500;
 const VELOCITY_MULTIPLIER = 1;
@@ -9,10 +9,7 @@ let ctx, birds, goalPosition;
 
 // type Bird = {
 //     position:[number, number]
-//     velocity:{
-//         speed:number;
-//         direction:[number, number]
-//     }
+//     velocity:[number, number]
 //     pBest: [number, number];
 // }
 
@@ -42,15 +39,22 @@ function startSimulation() {
 function tic() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+  updateBirdVelocities();
   updateBirdPositions();
+  updatePBests();
 
   for (const bird of birds) {
     drawBird(bird);
   }
 
   drawGoal();
+}
 
-  updatePBests();
+function updateBirdVelocities() {
+  birds = birds.map((bird) => {
+    bird.velocity = getNextBirdVelocity(bird);
+    return bird;
+  });
 }
 
 function updateBirdPositions() {
@@ -63,29 +67,26 @@ function updateBirdPositions() {
 function drawBird(bird) {
   const position = bird.position;
   const velocity = bird.velocity;
-  const lengthMultiplier = 20;
 
   ctx.fillStyle = "green";
-  ctx.fillRect(position[0], position[1], BIRD_RADIUS, BIRD_RADIUS);
+  ctx.fillRect(
+    position[0] - BIRD_RADIUS / 2,
+    position[1] - BIRD_RADIUS / 2,
+    BIRD_RADIUS,
+    BIRD_RADIUS
+  );
 
   // velocity marker
   ctx.beginPath();
-  ctx.moveTo(position[0] + BIRD_RADIUS / 2, position[1] + BIRD_RADIUS / 2);
-  ctx.lineTo(
-    position[0] + velocity.direction[0] * lengthMultiplier,
-    position[1] + velocity.direction[1] * lengthMultiplier
-  );
+  ctx.moveTo(position[0], position[1]);
+  const lineX = velocity[0];
+  const lineY = velocity[1];
+  ctx.lineTo(position[0] + lineX, position[1] + lineY);
   ctx.stroke(); // Render the path
 }
 
 function getNextBirdPosition(bird) {
-  const nextVelocity = bird.velocity; // TODO
-  const currentPosition = bird.position;
-
-  const nextPosition = [
-    currentPosition[0] + nextVelocity.direction[0] * nextVelocity.speed,
-    currentPosition[1] + nextVelocity.direction[1] * nextVelocity.speed,
-  ];
+  const nextPosition = vAdd(bird.position, bird.velocity);
 
   return nextPosition;
 }
@@ -95,23 +96,40 @@ function getNextBirdVelocity(bird) {
 
   const r1 = Math.random();
   const r2 = Math.random();
-  const w = 0.8; // inertia weigh const
-  const c1 = 0.1; // cognitive coeff
+  const w = 0.9; // inertia weigh const
+  const c1 = 0.9; // cognitive coeff
   const c2 = 0.1; // social coeff
   const pbest = bird.pBest;
   const gbest = getGBest();
 
-  const a = 1;
-  const b = c1 * r1 * vectorSubtract(pbest, bird.position);
-  const c = c2 * r2 * vectorSubtract(gbest, bird.position);
+  const cognitiveCoef = c1 * r1;
+  const socialCoef = c2 * r2;
 
-  const nextVelocity = a + b + c;
+  const inertiaPart = vFactor(bird.velocity, w);
+  const cognitivePart = vFactor(vSubtract(pbest, bird.position), cognitiveCoef);
+  const socialPart = vFactor(vSubtract(gbest, bird.position), socialCoef);
 
-  return nextVelocity;
+  const nextVelocity = vAdd(vAdd(inertiaPart, cognitivePart), socialPart);
+
+  return vFactor(nextVelocity, VELOCITY_MULTIPLIER);
 }
 
-function vectorSubtract(v1, v2) {
+function vAdd(v1, v2) {
+  return [v1[0] + v2[0], v1[1] + v2[1]];
+}
+
+function vSubtract(v1, v2) {
   return [v1[0] - v2[0], v1[1] - v2[1]];
+}
+
+function vFactor(v, f) {
+  return [v[0] * f, v[1] * f];
+}
+
+function distanceBetween(v1, v2) {
+  const diff = vSubtract(v1, v2);
+
+  return Math.sqrt(diff[0] * diff[0] + diff[1] * diff[1]);
 }
 
 function getGBest() {
@@ -119,23 +137,23 @@ function getGBest() {
 
   for (const bird of birds) {
     const pBest = bird.pBest;
-    const pDistance = pBest[0] + pBest[1];
-    const gDistance = gBest[0] + gBest[1];
+    const pDistance = distanceBetween(pBest, goalPosition);
+    const gDistance = distanceBetween(gBest, goalPosition);
+
     if (pDistance < gDistance) {
       gBest = pBest;
     }
   }
 
-  return pBest;
+  return gBest;
 }
 
 function updatePBests() {
   birds = birds.map((bird) => {
-    const dx = Math.abs(bird.position[0] - goalPosition[0]);
-    const dy = Math.abs(bird.position[1] - goalPosition[1]);
-    const distanceToGoal = Math.sqrt(dx * dx + dy * dy);
+    const currentDistance = distanceBetween(bird.position, goalPosition);
+    const bestDistance = distanceBetween(bird.pBest, goalPosition);
 
-    if (distanceToGoal < bird.pBest) {
+    if (currentDistance < bestDistance) {
       bird.pBest = bird.position;
     }
 
@@ -146,7 +164,12 @@ function updatePBests() {
 function drawGoal() {
   const position = [VIEW_WIDTH - 20, VIEW_HEIGHT / 2];
   ctx.fillStyle = "red";
-  ctx.fillRect(position[0], position[1], BIRD_RADIUS, BIRD_RADIUS);
+  ctx.fillRect(
+    position[0] - BIRD_RADIUS / 2,
+    position[1] - BIRD_RADIUS / 2,
+    BIRD_RADIUS,
+    BIRD_RADIUS
+  );
 }
 
 function createNewBird() {
@@ -158,10 +181,7 @@ function createNewBird() {
 
   return {
     position: [x, y],
-    velocity: {
-      speed: VELOCITY_MULTIPLIER,
-      direction: [1, 1],
-    },
-    pBest: [0, 0],
+    velocity: [1, 0],
+    pBest: [x, y],
   };
 }
