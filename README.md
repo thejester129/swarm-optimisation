@@ -1,4 +1,4 @@
-Particle swarm optimisation with a web GUI and customizable weights
+Particle swarm optimisation algorithm implementation with a web GUI and customizable weights
 
 Nice explanation: https://machinelearningmastery.com/a-gentle-introduction-to-particle-swarm-optimization/
 
